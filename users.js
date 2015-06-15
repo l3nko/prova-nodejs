@@ -32,7 +32,7 @@ exports.findAll = function(req, res) {
 exports.findByUserName = function(req, res) {
 
   model.findOne({_name:req.params.name}, function(err, user){
-    if(err) res.send(err);
+    if(err) res.status(400).send(err);
     else res.json(user);
   });
 
@@ -43,8 +43,24 @@ exports.AddUser = function(req, res) {
 
   var newUser = new model(req.body);
   newUser.save(function (err) {
-    if (err) res.send('NOK: '+err);
+    if (err) res.status(400).send(err);
     else res.send('OK '+newUser.id);
   });  
 
 };
+
+exports.deleteUser = function(req, res) {
+  var userId = req.params.userid;
+  // console.log('deleteUser: ' + userId);
+  model.findOne({_id:userId}, function(err, user) {
+    if (err) res.send(err);
+    else {
+      if (user==null) res.status(400).send('user not found: ' + userId);
+      else
+        model.remove(user, function(err) {
+          if (err) res.send(err);
+          else res.send('OK');
+        });
+    }
+  });
+}

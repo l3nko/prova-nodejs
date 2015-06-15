@@ -15,7 +15,13 @@
         angular.module('myApp', [])
           .controller('userCtrl', function($scope, $http) {
 
-            // $scope.users = [{fName:'pippo', lName:'pluto'}];
+            //init scope-variables
+            $scope.users = [];
+            $scope.error = false;
+            $scope.edit = false;
+            $scope.passwordCheck = false;
+
+            editId = NaN;
 
             $http.get('/users').
                 success(function(data, status, headers, config) {
@@ -28,7 +34,115 @@
                     // or server returns response with an error status.
                 });
 
-          });
+            $scope.editUser = function(userId) {
+                console.log('Editing user: ' + userId);
+                $scope.edit = true;
+                if (userId == 'new') {
+                    $scope.fName = '';
+                    $scope.lName = '';
+                    $scope.passw1 = '';
+                    $scope.passw2 = '';
+                    editId = NaN;
+                }
+                else {
+                    var user = $scope.users.find(userId);
+                    if (user == null) {
+                        console.log('user not found!!!');
+                        $scope.edit = false;
+                        editId = NaN;
+                    }
+                    else {
+                        $scope.fName = user.username;
+                        $scope.lName = user.name;
+                        editId = userId;
+                    }
+                }
+            }
+
+            Array.prototype.find = function getUserById(userId) {
+                var list = Object(this);
+                var length = list.length >>> 0;
+                var value;
+
+                for (var i = 0; i < length; i++) {
+                  value = list[i];
+                  if (value._id == userId) {
+                    return value;
+                  }
+                }
+                return undefined;
+            }; 
+
+            $scope.chekPasswords = function (passw1, passw2) {
+                $scope.passwordCheck = passw1==passw2;
+            }
+
+            $scope.saveUser = function (username,name,passw1,passw2) {
+                console.log('saving user: ' + username);
+
+                if (isNaN(editId)) {    //new user --> post
+                    $http.post('/users', {name:name, username:username, password:passw1}).
+                    success(function(data, status, headers, config) {
+                        // this callback will be called asynchronously
+                        // when the response is available
+                        console.log('post success');
+                        $scope.fName = '';
+                        $scope.lName = '';
+                        $scope.passw1 = '';
+                        $scope.passw2 = '';
+                        editId = NaN;                        
+                    }).
+                    error(function(data, status, headers, config) {
+                        // called asynchronously if an error occurs
+                        // or server returns response with an error status.
+                        console.log('post error: ' + data);
+                    });
+
+                }
+                else {      //update user --> update
+
+                }
+
+                //reload users
+                $http.get('/users').
+                    success(function(data, status, headers, config) {
+                        // this callback will be called asynchronously
+                        // when the response is available
+                        $scope.users = data;
+                    }).
+                    error(function(data, status, headers, config) {
+                        // called asynchronously if an error occurs
+                        // or server returns response with an error status.
+                    });
+
+            }
+
+            $scope.removeUser = function(userId) {
+                $http.delete('/users/'+userId).
+                    success(function(data, status, headers, config) {
+                        console.log('delete success');
+                    }).
+                    error(function(data, status, headers, config) {
+                        console.log('delete error: ' + data);
+                    });
+            }
+
+        }) //close user-controller
+
+        // .directive('validate_password', function () {
+                // return {
+                //     require: 'ngModel',
+                //     link: function (scope, elm, attrs, ctrl) {
+                //         ngModel.$parsers.unshift(function (viewValue, $scope) {
+                //             var noMatch = viewValue != scope.userForm.passw1.$viewValue
+                //             console.log('nomatch:' + noMatch);
+                //             ctrl.$setValidity('noMatch', !noMatch)
+                //         })
+                //     }
+            // }
+        // }) //close dorective pwCheck
+
+        ; //close module-myApp
 
     </script>
 
@@ -38,6 +152,7 @@
     <div class="navbar-inner">
         <a class="brand" href="#">Prova nodejs(rest e web) + jquery</a>
     </div>
+
     <div id="main" class="container">
 
         <h3>Users</h3>
@@ -53,8 +168,11 @@
             <tbody>
                 <tr ng-repeat="user in users">
                     <td>
-                        <button class="btn" ng-click="editUser(user.id)">
+                        <button class="btn" ng-click="editUser(user._id)">
                             <span class="glyphicon glyphicon-pencil"></span>  Edit
+                        </button>
+                        <button class="btn" ng-click="removeUser(user._id)">
+                            <span class="glyphicon glyphicon-remove"></span>  Delete
                         </button>
                     </td>
                     <td>{{ user.username }}</td>
@@ -80,40 +198,51 @@
         <h3 ng-hide="edit">Edit User:</h3>
 
         <!--  FORM NEW USER -->
-        <form class="form-horizontal">
+        <form class="form-horizontal" novalidate name="userForm">
             <div class="form-group">
-                <label class="col-sm-2 control-label">First Name:</label>
+                <label class="col-sm-2 control-label">User Name:</label>
                 <div class="col-sm-10">
-                    <input type="text" ng-model="fName" ng-disabled="!edit" placeholder="First Name">
+                    <input type="text" ng-model="fName" ng-disabled="!edit" placeholder="First Name" required 
+                    ng-minlength="3" name="inputfName">
+                    <p ng-show="userForm.inputfName.$invalid && !userForm.inputfName.$pristine" class="help-block">
+                        Your name is required with at minimun 3 chararachters.
+                    </p>
                 </div>
+                
             </div> 
             <div class="form-group">
-                <label class="col-sm-2 control-label">Last Name:</label>
+                <label class="col-sm-2 control-label">Name:</label>
                 <div class="col-sm-10">
-                    <input type="text" ng-model="lName" ng-disabled="!edit" placeholder="Last Name">
+                    <input type="text" ng-model="lName" ng-disabled="!edit" placeholder="Last Name" required name="inputlName">
+                    <p ng-show="userForm.inputlName.$invalid && !userForm.inputlName.$pristine" class="help-block">
+                        Your last name is required.
+                    </p>
                 </div>
             </div>
             <div class="form-group">
                 <label class="col-sm-2 control-label">Password:</label>
                 <div class="col-sm-10">
-                    <input type="password" ng-model="passw1" placeholder="Password">
+                    <input type="password" ng-model="passw1" placeholder="Password" required ng-disabled="!edit" ng-change="chekPasswords(passw1, passw2)">
                 </div>
             </div>
             <div class="form-group">
                 <label class="col-sm-2 control-label">Repeat:</label>
                 <div class="col-sm-10">
-                    <input type="password" ng-model="passw2" placeholder="Repeat Password">
+                    <input type="password" ng-model="passw2" placeholder="Repeat Password" required ng-disabled="!edit"
+                        ng-change="chekPasswords(passw1, passw2)" name="inputPass2">
                 </div>
+                <p ng-show="!passwordCheck && !userForm.inputPass2.$pristine" class="help-block">
+                    Passwords mismatch.
+                </p>
           </div>
         </form>
 
         <hr>
-        <button class="btn btn-success" ng-disabled="error || incomplete">
+        <button class="btn btn-success" ng-disabled="error || !passwordCheck || !userForm.$valid" 
+            ng-click="saveUser(fName,lName,passw1,passw2)">
             <span class="glyphicon glyphicon-save"></span>  Save Changes
         </button>
     </div>
-
-
 
 </body>
 </html>

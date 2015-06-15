@@ -52,8 +52,9 @@ app.put('/user', function (req, res) {
 });
 
 // accept DELETE request at /user
-app.delete('/user', function (req, res) {
-  res.send('Got a DELETE request at /user');
+app.delete('/users/:userid', function (req, res) {
+  console.log('deleting: ' + req.params.userid);
+  users.deleteUser(req, res);
 });
 
 
